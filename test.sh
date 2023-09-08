@@ -12,9 +12,9 @@ fi
 echo "Test 1 passed."
 
 x=$(./main.exe 20 35)
-y="5l"
+y="55"
 
-if [ "$x" != "$y" ]; then
+if [ "$x" -ne "$y" ]; then
 	echo "Error in test 2!" >&2
 	exit 1
 fi
