@@ -1,0 +1,95 @@
+name: Continuous Deployment
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    needs: [build]
+    permissions: write-all
+
+    steps:
+      - uses: actions/checkout@v1
+        name: Checkout
+      - name: Create a new release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: build-linux
+      - name: Upload Linux release
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build-linux/main.exe
+          asset_content_type: application/octet-stream
+          asset_name: app-linux
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: build-windows
+      - name: Upload Windows release
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build-windows/main.exe
+          asset_content_type: application/octet-stream
+          asset_name: app-windows.exe
+      - name: Download MacOS artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: build-macos
+      - name: Upload MacOS release
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build-macos/main.exe
+          asset_content_type: application/octet-stream
+          asset_name: app-macos.exe
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            compiler: gcc
+            target: linux
+          - os: windows-latest
+            compiler: gcc
+            target: windows
+          - os: macos-latest
+            compiler: gcc
+            target: macos
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Compile
+        run: make build
+
+      - name: Upload compiled executable
+        uses: actions/upload-artifact@v1
+        with:
+          name: build-${{ matrix.target }}
+          path: ./main.exe
